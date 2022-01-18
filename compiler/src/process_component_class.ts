@@ -37,7 +37,8 @@ import {
   BUILDER_ATTR_NAME,
   BUILDER_ATTR_BIND,
   COMPONENT_STYLES_DECORATOR,
-  STYLES
+  STYLES,
+  CUSTOM_COMPONENT_EARLIER_CREATE_CHILD
 } from './pre_define';
 import {
   BUILDIN_STYLE_NAMES,
@@ -211,6 +212,9 @@ function processBuildMember(node: ts.MethodDeclaration, context: ts.Transformati
   const buildNode: ts.MethodDeclaration = processComponentBuild(node, log);
   return ts.visitNode(buildNode, visitBuild);
   function visitBuild(node: ts.Node): ts.Node {
+    if (isCustomComponentNode(node)) {
+      return node;
+    }
     if (isGeometryView(node)) {
       node = processGeometryView(node as ts.ExpressionStatement, log);
     }
@@ -281,6 +285,22 @@ function getParsedBuilderAttrArgument(node: ts.PropertyAccessExpression | ts.Ide
     ])
   }
   return newObjectNode;
+}
+
+function isCustomComponentNode(node:ts.NewExpression | ts.ExpressionStatement): boolean {
+  if ((ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.escapedText
+    && componentCollection.customComponents.has(node.expression.escapedText.toString())) ||
+    // @ts-ignore
+    (ts.isExpressionStatement(node) && node.expression && node.expression.expression &&
+    // @ts-ignore
+    node.expression.expression.expression && node.expression.expression.expression.escapedText &&
+    // @ts-ignore
+    node.expression.expression.expression.escapedText.toString().startsWith(
+    CUSTOM_COMPONENT_EARLIER_CREATE_CHILD))) {
+    return true;
+  }else {
+    return false;
+  }
 }
 
 function isGeometryView(node: ts.Node): boolean {

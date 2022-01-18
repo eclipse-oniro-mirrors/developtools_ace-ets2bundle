@@ -35,13 +35,14 @@ export const COMPONENT_PROVIDE_DECORATOR: string = '@Provide';
 export const COMPONENT_CONSUME_DECORATOR: string = '@Consume';
 export const COMPONENT_OBJECT_LINK_DECORATOR: string = '@ObjectLink';
 export const COMPONENT_WATCH_DECORATOR: string = '@Watch';
+export const COMPONENT_BUILDERPARAM_DECORATOR: string = '@BuilderParam';
 
 export const INNER_COMPONENT_DECORATORS: Set<string> = new Set([COMPONENT_DECORATOR_ENTRY,
   COMPONENT_DECORATOR_PREVIEW, COMPONENT_DECORATOR_COMPONENT, COMPONENT_DECORATOR_CUSTOM_DIALOG]);
 export const INNER_COMPONENT_MEMBER_DECORATORS: Set<string> = new Set([COMPONENT_STATE_DECORATOR,
   COMPONENT_PROP_DECORATOR, COMPONENT_LINK_DECORATOR, COMPONENT_STORAGE_PROP_DECORATOR,
   COMPONENT_STORAGE_LINK_DECORATOR, COMPONENT_PROVIDE_DECORATOR, COMPONENT_CONSUME_DECORATOR,
-  COMPONENT_OBJECT_LINK_DECORATOR, COMPONENT_WATCH_DECORATOR]);
+  COMPONENT_OBJECT_LINK_DECORATOR, COMPONENT_WATCH_DECORATOR, COMPONENT_BUILDERPARAM_DECORATOR]);
 
 export const COMPONENT_OBSERVED_DECORATOR: string = '@Observed';
 export const COMPONENT_BUILDER_DECORATOR: string = '@Builder';
@@ -181,6 +182,7 @@ export const GEOMETRY_VIEW: string = 'GeometryView';
 export const MODULE_SHARE_PATH: string = 'src' + path.sep + 'ets' + path.sep + 'share';
 export const BUILD_SHARE_PATH: string = '../share';
 
+export const CHILD: string = 'child';
 export const THIS: string = 'this';
 export const STYLES: string = 'Styles';
 export const VISUAL_STATE: string = 'visualState';

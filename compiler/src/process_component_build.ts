@@ -45,6 +45,7 @@ import {
   COMPONENT_TRANSITION_NAME,
   COMPONENT_DEBUGLINE_FUNCTION,
   ATTRIBUTE_STATESTYLES,
+  CHILD,
   THIS,
   VISUAL_STATE,
   VIEW_STACK_PROCESSOR,
@@ -76,6 +77,7 @@ import {
   componentInfo,
   createFunction
 } from './utils';
+import { builderParamObjectCollection } from './process_component_member';
 import { projectConfig } from '../main';
 import { transformLog, contextGlobal } from './process_ui_syntax';
 import { props } from './compile_info';
@@ -157,20 +159,25 @@ function validateRootNode(node: ts.MethodDeclaration, log: LogInfo[]): boolean {
 export function processComponentChild(node: ts.Block | ts.SourceFile, newStatements: ts.Statement[],
   log: LogInfo[]): void {
   if (node.statements.length) {
-    node.statements.forEach((item, index) => {
+    node.statements.forEach((item, index, array) => {
       if (ts.isExpressionStatement(item)) {
         const name: string = getName(item);
         switch (getComponentType(item, log, name)) {
           case ComponentType.innerComponent:
-            processInnerComponent(item, index, Array.from(node.statements), newStatements, log, name);
+            processInnerComponent(item, index, Array.from(node.statements),
+              newStatements, log, name);
             break;
           case ComponentType.customComponent:
+            if (index + 1 < array.length && ts.isBlock(array[index + 1])) {
+              item = processBlockChange(item, 
+                array[index + 1] as ts.Block, log)
+            }
             processCustomComponent(item, newStatements, log);
             break;
           case ComponentType.forEachComponent:
             processForEachComponent(item, newStatements, log);
             break;
-          case ComponentType.customBuilderMethod:
+          case ComponentType.customBuilderMethod || ComponentType.builderParamMethod:
             newStatements.push(item);
             break;
         }
@@ -186,6 +193,31 @@ export function processComponentChild(node: ts.Block | ts.SourceFile, newStateme
       }
     });
   }
+}
+
+function processBlockChange(node: ts.ExpressionStatement, nextNode: ts.Block,
+  log: LogInfo[]): ts.block {
+  // @ts-ignore
+  const newBlock: ts.Block = processComponentBlock(nextNode, false, log);
+  const arrowNode: ts.ArrowFunction = ts.factory.createArrowFunction(undefined, undefined,
+    [], undefined, ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), newBlock);
+  const newPropertyAssignment:ts.PropertyAssignment = ts.factory.createPropertyAssignment(
+    ts.factory.createIdentifier(CHILD), arrowNode);
+  // @ts-ignore
+  let argumentsArray: ts.ObjectLiteralExpression[] = node.express.arguments;
+  if (arguments && arguments.length < 1) {
+    argumentsArray = [ts.factory.createObjectLiteralExpression([newPropertyAssignment], true)]
+  } else {
+    // @ts-ignore
+    argumentsArray = [ts.factory.createObjectLiteralExpression(
+      // @ts-ignore
+      node.express.arguments[0].properties.concat([newPropertyAssignment]), true)]
+  }
+  // @ts-ignore
+  node = ts.factory.updateExpressionStatement(node, ts.factory.updateCallExpression(node.expression,
+    // @ts-ignore
+    node.expression.expression, node.expression.expression,typeArguments, argumentsArray))
+  return node;
 }
 
 function processInnerComponent(node: ts.ExpressionStatement, index: number, arr: ts.Statement[],
@@ -817,7 +849,8 @@ enum ComponentType {
   innerComponent,
   customComponent,
   forEachComponent,
-  customBuilderMethod
+  customBuilderMethod,
+  builderParamMethod
 }
 
 function getComponentType(node: ts.ExpressionStatement, log: LogInfo[],
@@ -831,7 +864,10 @@ function getComponentType(node: ts.ExpressionStatement, log: LogInfo[],
     return ComponentType.forEachComponent;
   } else if (CUSTOM_BUILDER_METHOD.has(name)) {
     return ComponentType.customBuilderMethod;
-  } else if (!isAttributeNode(node)) {
+  } else if (builderParamObjectCollection.get(componentCollection.currentClassName) && 
+    builderParamObjectCollection.get(componentCollection.currentClassName).has(name)) {
+    return ComponentType.builderParamMethod;
+  }else if (!isAttributeNode(node)) {
     log.push({
       type: LogType.ERROR,
       message: `'${node.getText()}' does not meet UI component syntax.`,

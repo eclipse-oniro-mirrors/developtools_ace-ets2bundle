@@ -51,7 +51,8 @@ import {
   JS_DIALOG,
   CUSTOM_DIALOG_CONTROLLER_BUILDER,
   BASE_COMPONENT_NAME,
-  COMPONENT_CREATE_FUNCTION
+  COMPONENT_CREATE_FUNCTION,
+  COMPONENT_BUILDERPARAM_DECORATOR
 } from './pre_define';
 import {
   forbiddenUseStateType,
@@ -98,7 +99,9 @@ export const mandatoryToInitViaParamDecorators: Set<string> =
   new Set([...propAndLinkDecorators, COMPONENT_OBJECT_LINK_DECORATOR]);
 
 export const setUpdateParamsDecorators: Set<string> =
-  new Set([...observedPropertyDecorators, COMPONENT_PROP_DECORATOR, COMPONENT_OBJECT_LINK_DECORATOR]);
+  new Set([...observedPropertyDecorators, COMPONENT_PROP_DECORATOR, COMPONENT_OBJECT_LINK_DECORATOR,
+    COMPONENT_BUILDERPARAM_DECORATOR
+  ]);
 
 export const immutableDecorators: Set<string> =
   new Set([COMPONENT_STORAGE_PROP_DECORATOR, COMPONENT_OBJECT_LINK_DECORATOR]);
@@ -109,6 +112,8 @@ export const simpleTypes: Set<ts.SyntaxKind> = new Set([ts.SyntaxKind.StringKeyw
 export const decoratorParamSet: Set<string> = new Set();
 
 export const stateObjectCollection: Set<string> = new Set();
+
+export const builderParamObjectCollection: Map<string, Set<string>> = new Map();
 
 export class UpdateResult {
   private itemUpdate: boolean = false;
@@ -263,7 +268,8 @@ function processPropertyNodeDecorator(parentName: ts.Identifier, node: ts.Proper
     if (node.questionToken && mandatoryToInitViaParamDecorators.has(decoratorName)) {
       validateHasIllegalQuestionToken(name, decoratorName, log);
     }
-    if (!isSimpleType(node.type, program)) {
+    if (!isSimpleType(node.type, program) &&
+      decoratorName !== COMPONENT_BUILDERPARAM_DECORATOR) {
       stateObjectCollection.add(name.escapedText.toString());
     }
     if (decoratorName === COMPONENT_WATCH_DECORATOR &&
@@ -405,6 +411,16 @@ function createUpdateParams(name: ts.Identifier, decorator: string): ts.Statemen
     case COMPONENT_OBJECT_LINK_DECORATOR:
       updateParamsNode = createUpdateParamsWithSet(name);
       break;
+    case COMPONENT_BUILDERPARAM_DECORATOR:
+      if (decorator === COMPONENT_BUILDERPARAM_DECORATOR) {
+        if (!builderParamObjectCollection.get(componentCollection.currentClassName)) {
+          builderParamObjectCollection.set(componentCollection.currentClassName, new Set([]));
+        }
+        builderParamObjectCollection.get(componentCollection.currentClassName)
+          .add(name.escapedText.toString())
+      }
+      updateParamsNode = createUpdateParamsWithoutIf(name, 1);
+      break;
   }
   return updateParamsNode;
 }
@@ -419,9 +435,15 @@ function createUpdateParamsWithIf(name: ts.Identifier): ts.IfStatement {
     createUpdateParamsWithoutIf(name)], true), undefined);
 }
 
-function createUpdateParamsWithoutIf(name: ts.Identifier): ts.ExpressionStatement {
+function createUpdateParamsWithoutIf(name: ts.Identifier, isAdd: number = 0): ts.ExpressionStatement {
+  let textName: string;
+  if (isAdd) {
+    textName = `__${name.getText()}`;
+  } else {
+    textName = name.getText();
+  }
   return ts.factory.createExpressionStatement(ts.factory.createBinaryExpression(
-    createPropertyAccessExpressionWithThis(name.getText()),
+    createPropertyAccessExpressionWithThis(textName),
     ts.factory.createToken(ts.SyntaxKind.EqualsToken),
     createPropertyAccessExpressionWithParams(name.getText())));
 }
