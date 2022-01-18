@@ -802,13 +802,8 @@ function collectExtend(component: string, attribute: string, parameter: string):
 
 export function processSystemApi(content: string, isProcessWhiteList: boolean = false): string {
   let REG_SYSTEM: RegExp;
-  if (isProcessWhiteList) {
-    REG_SYSTEM =
-      /(import|const)\s+(.+)\s*=\s*(\_\_importDefault\()?require\(\s*['"]@(system|ohos)\.(\S+)['"]\s*\)(\))?/g;
-  } else {
-    REG_SYSTEM =
-      /import\s+(.+)\s+from\s+['"]@(system|ohos)\.(\S+)['"]|import\s+(.+)\s*=\s*require\(\s*['"]@(system|ohos)\.(\S+)['"]\s*\)/g;
-  }
+  REG_SYSTEM =
+    /import\s+(.+)\s+from\s+['"]@(system|ohos)\.(\S+)['"]|import\s+(.+)\s*=\s*require\(\s*['"]@(system|ohos)\.(\S+)['"]\s*\)/g;
   const REG_LIB_SO: RegExp =
     /import\s+(.+)\s+from\s+['"]lib(\S+)\.so['"]|import\s+(.+)\s*=\s*require\(\s*['"]lib(\S+)\.so['"]\s*\)/g;
   return content.replace(REG_LIB_SO, (_, item1, item2, item3, item4) => {
@@ -819,13 +814,6 @@ export function processSystemApi(content: string, isProcessWhiteList: boolean = 
       let moduleType: string = item2 || item5;
       let systemKey: string = item3 || item6;
       let systemValue: string = item1 || item4;
-      if (!isProcessWhiteList && validateWhiteListModule(moduleType, systemKey)) {
-        return item;
-      } else if (isProcessWhiteList) {
-        systemValue = item2;
-        moduleType = item4;
-        systemKey = item5;
-      } 
       moduleCollection.add(`${moduleType}.${systemKey}`);
       if (NATIVE_MODULE.has(`${moduleType}.${systemKey}`)) {
         item = `var ${systemValue} = globalThis.requireNativeModule('${moduleType}.${systemKey}')`;
