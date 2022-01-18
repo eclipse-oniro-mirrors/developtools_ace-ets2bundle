@@ -52,6 +52,8 @@ function initProjectConfig(projectConfig) {
     path.join(projectConfig.projectPath, 'manifest.json');
   projectConfig.aceProfilePath = projectConfig.aceProfilePath || process.env.aceProfilePath;
   projectConfig.aceModuleJsonPath = projectConfig.aceModuleJsonPath || process.env.aceModuleJsonPath;
+  projectConfig.aceSuperVisualPath = projectConfig.aceSuperVisualPath ||
+    process.env.aceSuperVisualPath
 }
 
 function loadEntryObj(projectConfig) {
