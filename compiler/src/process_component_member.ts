@@ -419,7 +419,7 @@ function createUpdateParams(name: ts.Identifier, decorator: string): ts.Statemen
         builderParamObjectCollection.get(componentCollection.currentClassName)
           .add(name.escapedText.toString())
       }
-      updateParamsNode = createUpdateParamsWithoutIf(name, 1);
+      updateParamsNode = createUpdateParamsWithoutIf(name, true);
       break;
   }
   return updateParamsNode;
@@ -435,7 +435,7 @@ function createUpdateParamsWithIf(name: ts.Identifier): ts.IfStatement {
     createUpdateParamsWithoutIf(name)], true), undefined);
 }
 
-function createUpdateParamsWithoutIf(name: ts.Identifier, isAdd: number = 0): ts.ExpressionStatement {
+function createUpdateParamsWithoutIf(name: ts.Identifier, isAdd: boolean = false): ts.ExpressionStatement {
   let textName: string;
   if (isAdd) {
     textName = `__${name.getText()}`;

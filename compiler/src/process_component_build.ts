@@ -196,7 +196,7 @@ export function processComponentChild(node: ts.Block | ts.SourceFile, newStateme
 }
 
 function processBlockChange(node: ts.ExpressionStatement, nextNode: ts.Block,
-  log: LogInfo[]): ts.block {
+  log: LogInfo[]): ts.ExpressionStatement {
   // @ts-ignore
   const newBlock: ts.Block = processComponentBlock(nextNode, false, log);
   const arrowNode: ts.ArrowFunction = ts.factory.createArrowFunction(undefined, undefined,
@@ -204,19 +204,19 @@ function processBlockChange(node: ts.ExpressionStatement, nextNode: ts.Block,
   const newPropertyAssignment:ts.PropertyAssignment = ts.factory.createPropertyAssignment(
     ts.factory.createIdentifier(CHILD), arrowNode);
   // @ts-ignore
-  let argumentsArray: ts.ObjectLiteralExpression[] = node.express.arguments;
+  let argumentsArray: ts.ObjectLiteralExpression[] = node.expression.arguments;
   if (argumentsArray && argumentsArray.length < 1) {
     argumentsArray = [ts.factory.createObjectLiteralExpression([newPropertyAssignment], true)]
   } else {
     // @ts-ignore
     argumentsArray = [ts.factory.createObjectLiteralExpression(
       // @ts-ignore
-      node.express.arguments[0].properties.concat([newPropertyAssignment]), true)]
+      node.expression.arguments[0].properties.concat([newPropertyAssignment]), true)]
   }
   // @ts-ignore
   node = ts.factory.updateExpressionStatement(node, ts.factory.updateCallExpression(node.expression,
     // @ts-ignore
-    node.expression.expression, node.expression.expression,typeArguments, argumentsArray))
+    node.expression.expression, node.expression.expression.typeArguments, argumentsArray))
   return node;
 }
 
