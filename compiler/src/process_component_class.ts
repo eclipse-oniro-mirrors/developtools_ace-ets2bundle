@@ -212,7 +212,7 @@ function processBuildMember(node: ts.MethodDeclaration, context: ts.Transformati
   const buildNode: ts.MethodDeclaration = processComponentBuild(node, log);
   return ts.visitNode(buildNode, visitBuild);
   function visitBuild(node: ts.Node): ts.Node {
-    if (isCustomComponentNode(node)) {
+    if (isCustomComponentNode(node) || isCustomBuilderNode(node)) {
       return node;
     }
     if (isGeometryView(node)) {
@@ -298,9 +298,17 @@ function isCustomComponentNode(node:ts.NewExpression | ts.ExpressionStatement): 
     node.expression.expression.expression.escapedText.toString().startsWith(
     CUSTOM_COMPONENT_EARLIER_CREATE_CHILD))) {
     return true;
-  }else {
+  } else {
     return false;
   }
+}
+
+function isCustomBuilderNode(node: ts.ExpressionStatement): boolean {
+  return ts.isExpressionStatement(node) && node.expression &&
+    // @ts-ignore
+    node.expression.expression && node.expression.expression.escapedText &&
+    // @ts-ignore
+    CUSTOM_BUILDER_METHOD.has(node.expression.expression.escapedText.toString());
 }
 
 function isGeometryView(node: ts.Node): boolean {

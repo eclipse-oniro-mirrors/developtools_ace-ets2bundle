@@ -205,7 +205,7 @@ function processBlockChange(node: ts.ExpressionStatement, nextNode: ts.Block,
     ts.factory.createIdentifier(CHILD), arrowNode);
   // @ts-ignore
   let argumentsArray: ts.ObjectLiteralExpression[] = node.express.arguments;
-  if (arguments && arguments.length < 1) {
+  if (argumentsArray && argumentsArray.length < 1) {
     argumentsArray = [ts.factory.createObjectLiteralExpression([newPropertyAssignment], true)]
   } else {
     // @ts-ignore
