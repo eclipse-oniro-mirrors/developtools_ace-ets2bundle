@@ -491,7 +491,7 @@ interface AnimationInfo {
 
 export function bindComponentAttr(node: ts.ExpressionStatement, identifierNode: ts.Identifier,
   newStatements: ts.Statement[], log: LogInfo[], reverse: boolean = true,
-  isStylesAttr: boolean = false): void {
+  isStylesAttr: boolean = false, isGlobalStyles: boolean = false): void {
   let temp: any = node.expression;
   const statements: ts.Statement[] = [];
   const lastStatement: AnimationInfo = { statement: null, kind: false };
@@ -499,13 +499,13 @@ export function bindComponentAttr(node: ts.ExpressionStatement, identifierNode: 
     if (ts.isPropertyAccessExpression(temp.expression) &&
       temp.expression.name && ts.isIdentifier(temp.expression.name)) {
       addComponentAttr(temp, temp.expression.name, lastStatement, statements, identifierNode, log,
-        isStylesAttr);
+        isStylesAttr, isGlobalStyles);
       temp = temp.expression.expression;
     } else if (ts.isIdentifier(temp.expression)) {
       if (!INNER_COMPONENT_NAMES.has(temp.expression.getText()) &&
         !GESTURE_TYPE_NAMES.has(temp.expression.getText())) {
         addComponentAttr(temp, temp.expression, lastStatement, statements, identifierNode, log,
-          isStylesAttr);
+          isStylesAttr, isGlobalStyles);
       }
       break;
     }
@@ -558,7 +558,7 @@ function updateArgumentFor$$(argument: any): ts.Expression {
 
 function addComponentAttr(temp: any, node: ts.Identifier, lastStatement: any,
   statements: ts.Statement[], identifierNode: ts.Identifier, log: LogInfo[],
-  isStylesAttr: boolean): void {
+  isStylesAttr: boolean, isGlobalStyles: boolean): void {
   const propName: string = node.getText();
   if (propName === ATTRIBUTE_ANIMATION) {
     if (!lastStatement.statement) {
@@ -595,8 +595,13 @@ function addComponentAttr(temp: any, node: ts.Identifier, lastStatement: any,
   } else if (GLOBAL_STYLE_FUNCTION.has(propName) || INNER_STYLE_FUNCTION.has(propName)) {
     const styleBlock: ts.Block =
       GLOBAL_STYLE_FUNCTION.get(propName) || INNER_STYLE_FUNCTION.get(propName);
-    bindComponentAttr(styleBlock.statements[0] as ts.ExpressionStatement, identifierNode,
-      statements, log, false, true);
+    if (GLOBAL_STYLE_FUNCTION.has(propName)) {
+      bindComponentAttr(styleBlock.statements[0] as ts.ExpressionStatement, identifierNode,
+        statements, log, false, true, true);
+    } else {
+      bindComponentAttr(styleBlock.statements[0] as ts.ExpressionStatement, identifierNode,
+        statements, log, false, true, false);
+    }
     lastStatement.kind = true;
   } else if (propName === BIND_POPUP && temp.arguments.length === 2 &&
     temp.arguments[0].getText().match(/^\$\$(.|\n)+/)) {
@@ -612,8 +617,10 @@ function addComponentAttr(temp: any, node: ts.Identifier, lastStatement: any,
       if (!COMMON_ATTRS.has(propName)) {
         validateStateStyleSyntax(temp, log);
       }
-      for (let i=0; i<temp.arguments.length; i++) {
-        temp.arguments[i] = traverseStylesAttr(temp.arguments[i]);
+      if (isGlobalStyles) {
+        for (let i=0; i<temp.arguments.length; i++) {
+          temp.arguments[i] = traverseStylesAttr(temp.arguments[i]);
+        }
       }
     }
     statements.push(ts.factory.createExpressionStatement(
