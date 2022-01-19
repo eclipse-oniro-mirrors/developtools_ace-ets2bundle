@@ -210,11 +210,9 @@ function processBuildMember(node: ts.MethodDeclaration, context: ts.Transformati
     });
   }
   const buildNode: ts.MethodDeclaration = processComponentBuild(node, log);
-  return ts.visitNode(buildNode, visitBuild);
+  const firstParseBuildNode = ts.visitNode(buildNode, visitBuild);
+  return ts.visitNode(firstParseBuildNode, visitBuildSecond);
   function visitBuild(node: ts.Node): ts.Node {
-    if (isCustomComponentNode(node) || isCustomBuilderNode(node)) {
-      return node;
-    }
     if (isGeometryView(node)) {
       node = processGeometryView(node as ts.ExpressionStatement, log);
     }
@@ -229,11 +227,17 @@ function processBuildMember(node: ts.MethodDeclaration, context: ts.Transformati
         ts.factory.createIdentifier(FOREACH_OBSERVED_OBJECT),
         ts.factory.createIdentifier(FOREACH_GET_RAW_OBJECT)), undefined, [node]);
     }
+    return ts.visitEachChild(node, visitBuild, context);
+  }
+  function visitBuildSecond(node: ts.Node): ts.Node {
+    if (isCustomComponentNode(node) || isCustomBuilderNode(node)) {
+      return node;
+    }
     if ((ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)) &&
       validateBuilderFunctionNode(node)) {
       return getParsedBuilderAttrArgument(node);
     }
-    return ts.visitEachChild(node, visitBuild, context);
+    return ts.visitEachChild(node, visitBuildSecond, context);
   }
 }
 
