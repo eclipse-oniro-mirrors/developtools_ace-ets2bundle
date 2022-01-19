@@ -257,7 +257,7 @@ export class ResultStates {
     const componentNameReg: RegExp = /'typeof\s*(\$?[_a-zA-Z0-9]+)' is not callable/;
     const stateInfoReg: RegExp = /Property\s*'(\$[_a-zA-Z0-9]+)' does not exist on type/;
     const extendInfoReg: RegExp =
-      /Property\s*'([_a-zA-Z0-9]+)' does not exist on type\s*'([_a-zA-Z0-9]+)(Attribute|Interface)?'\./;
+      /Property\s*'([_a-zA-Z0-9]+)' does not exist on type\s*'([_a-zA-Z0-9]+)(Attribute|Interface)'\./;
     if (this.matchMessage(message, props.concat([...STYLES_ATTRIBUTE]), propInfoReg) ||
       this.matchMessage(message, [...componentCollection.customComponents], componentNameReg) ||
       this.matchMessage(message, props, stateInfoReg) ||
