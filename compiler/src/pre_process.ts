@@ -52,7 +52,7 @@ function preProcess(source: string): string {
 function parseVisual(resourcePath: string, content: string, log: LogInfo[]): string {
   if (componentCollection.entryComponent && projectConfig.aceSuperVisualPath) {
     const sourceFile: ts.SourceFile = ts.createSourceFile(resourcePath, content,
-      ts.ScriptTarget.Latest, true, ts.ScrpitKint.TS);
+      ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     if (sourceFile.statments) {
       sourceFile.statments.forEach(statment => {
         content = parseStatment(statment, content, log, resourcePath);
