@@ -228,7 +228,7 @@ function processExpressionStatementChange(node: ts.ExpressionStatement, nextNode
   } else {
     log.push({
       type: LogType.ERROR,
-      message: `'${name}' should have a property decorated with @ builderparamThe .`,
+      message: `'${name}' should have a property decorated with @ builderparam .`,
       pos: node.getStart()
     });
   }
