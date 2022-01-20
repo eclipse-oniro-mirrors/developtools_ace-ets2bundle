@@ -18,11 +18,11 @@ exports.source = `
 struct CustomContainer {
     header: string = "";
     footer: string = "";
-    @BuilderParam child1: () => any;
+    @BuilderParam child: () => any;
     
     build() {
         Column() {
-            this.child1()
+            this.child()
             Text(this.header)
             Text(this.footer)
         }
@@ -44,9 +44,8 @@ struct CustomContainerUser {
             CustomContainer({
                 header: "Header",
                 footer: "Footer",
-            }){
-                this.specificChild()
-            }
+                child: this.specificChild
+            })
         }  
     }
 }
@@ -66,20 +65,14 @@ exports.expectResult =
         if (params.footer !== undefined) {
             this.footer = params.footer;
         }
-        this.__child1 = params.child1;
+        this.child = params.child;
     }
     aboutToBeDeleted() {
-        this.__child1.aboutToBeDeleted();
         SubscriberManager.Get().delete(this.id());
-    }
-    get child1() {
-        return this.__child1.get();
-    }
-    set child1(newValue) {
-        this.__child1.set(newValue);
     }
     render() {
         Column.create();
+        this.child();
         Text.create(this.header);
         Text.pop();
         Text.create(this.footer);
@@ -112,18 +105,14 @@ class CustomContainerUser extends View {
             View.create(new CustomContainer("2", this, {
                 header: "Header",
                 footer: "Footer",
-                child1: () => {
-                    this.specificChild();
-                }
+                child: this.specificChild
             }));
         }
         else {
             earlierCreatedChild_2.updateWithValueParams({
                 header: "Header",
                 footer: "Footer",
-                child1: () => {
-                    this.specificChild();
-                }
+                child: this.specificChild
             });
             View.create(earlierCreatedChild_2);
         }

@@ -104,7 +104,7 @@ export const setUpdateParamsDecorators: Set<string> =
   ]);
 
 export const immutableDecorators: Set<string> =
-  new Set([COMPONENT_STORAGE_PROP_DECORATOR, COMPONENT_OBJECT_LINK_DECORATOR]);
+  new Set([COMPONENT_STORAGE_PROP_DECORATOR, COMPONENT_OBJECT_LINK_DECORATOR, COMPONENT_BUILDERPARAM_DECORATOR]);
 
 export const simpleTypes: Set<ts.SyntaxKind> = new Set([ts.SyntaxKind.StringKeyword,
   ts.SyntaxKind.NumberKeyword, ts.SyntaxKind.BooleanKeyword, ts.SyntaxKind.EnumDeclaration]);
@@ -299,14 +299,16 @@ function processStateDecorators(node: ts.PropertyDeclaration, decorator: string,
   }
   addAddProvidedVar(node, name, decorator, updateState);
   updateResult.setCtor(updateConstructor(ctorNode, [], [...updateState], false));
-  updateResult.setVariableGet(createGetAccessor(name, CREATE_GET_METHOD));
+  if (decorator !== COMPONENT_BUILDERPARAM_DECORATOR) {
+    updateResult.setVariableGet(createGetAccessor(name, CREATE_GET_METHOD));
+    updateResult.setDeleteParams(true);
+  }
   if (!immutableDecorators.has(decorator)) {
     updateResult.setVariableSet(createSetAccessor(name, CREATE_SET_METHOD));
   }
   if (setUpdateParamsDecorators.has(decorator)) {
     updateResult.setUpdateParams(createUpdateParams(name, decorator));
   }
-  updateResult.setDeleteParams(true);
 }
 
 function processWatch(node: ts.PropertyDeclaration, decorator: ts.Decorator,
@@ -436,14 +438,8 @@ function createUpdateParamsWithIf(name: ts.Identifier): ts.IfStatement {
 }
 
 function createUpdateParamsWithoutIf(name: ts.Identifier, isAdd: boolean = false): ts.ExpressionStatement {
-  let textName: string;
-  if (isAdd) {
-    textName = `__${name.getText()}`;
-  } else {
-    textName = name.getText();
-  }
   return ts.factory.createExpressionStatement(ts.factory.createBinaryExpression(
-    createPropertyAccessExpressionWithThis(textName),
+    createPropertyAccessExpressionWithThis(name.getText()),
     ts.factory.createToken(ts.SyntaxKind.EqualsToken),
     createPropertyAccessExpressionWithParams(name.getText())));
 }
