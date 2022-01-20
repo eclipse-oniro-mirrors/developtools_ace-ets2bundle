@@ -53,23 +53,23 @@ function parseVisual(resourcePath: string, content: string, log: LogInfo[]): str
   if (componentCollection.entryComponent && projectConfig.aceSuperVisualPath) {
     const sourceFile: ts.SourceFile = ts.createSourceFile(resourcePath, content,
       ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    if (sourceFile.statments) {
-      sourceFile.statments.forEach(statment => {
-        content = parseStatment(statment, content, log, resourcePath);
+    if (sourceFile.statements) {
+      sourceFile.statements.forEach(statement => {
+        content = parseStatement(statement, content, log, resourcePath);
       });
     }
   }
   return content;
 }
 
-function parseStatment(statement: ts.Statement, content: string, log: LogInfo[],
+function parseStatement(statement: ts.Statement, content: string, log: LogInfo[],
   resourcePath: string): string {
   if (statement.kind === ts.SyntaxKind.ClassDeclaration &&
     statement.name && statement.name.getText() === componentCollection.entryComponent) {
     const visualPath: string = findVisualFile(resourcePath);
     if (visualPath && fs.existsSync(visualPath) && statement.members) {
       statement.members.forEach(member => {
-        if (member.kind && member === ts.SyntaxKind.MethodDeclaration) {
+        if (member.kind && member.kind === ts.SyntaxKind.MethodDeclaration) {
           content = parseMember(member, content, log, visualPath)
         }
       });
