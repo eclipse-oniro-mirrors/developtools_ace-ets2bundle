@@ -169,7 +169,7 @@ export function processComponentChild(node: ts.Block | ts.SourceFile, newStateme
             break;
           case ComponentType.customComponent:
             if (index + 1 < array.length && ts.isBlock(array[index + 1])) {
-              item = processBlockChange(item, 
+              item = processExpressionStatementChange(item, 
                 array[index + 1] as ts.Block, log)
             }
             processCustomComponent(item, newStatements, log);
@@ -195,29 +195,43 @@ export function processComponentChild(node: ts.Block | ts.SourceFile, newStateme
   }
 }
 
-function processBlockChange(node: ts.ExpressionStatement, nextNode: ts.Block,
+function processExpressionStatementChange(node: ts.ExpressionStatement, nextNode: ts.Block,
   log: LogInfo[]): ts.ExpressionStatement {
-  // @ts-ignore
-  const newBlock: ts.Block = processComponentBlock(nextNode, false, log);
-  const arrowNode: ts.ArrowFunction = ts.factory.createArrowFunction(undefined, undefined,
-    [], undefined, ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), newBlock);
-  const newPropertyAssignment:ts.PropertyAssignment = ts.factory.createPropertyAssignment(
-    ts.factory.createIdentifier(CHILD), arrowNode);
-  // @ts-ignore
-  let argumentsArray: ts.ObjectLiteralExpression[] = node.expression.arguments;
-  if (argumentsArray && argumentsArray.length < 1) {
-    argumentsArray = [ts.factory.createObjectLiteralExpression([newPropertyAssignment], true)]
-  } else {
     // @ts-ignore
-    argumentsArray = [ts.factory.createObjectLiteralExpression(
+  let name = node.expression.expression.escapedText.toString()
+  let childParam: string;
+  if (builderParamObjectCollection.get(name) && builderParamObjectCollection.get(name).size > 0) {
+    builderParamObjectCollection.get(name).forEach((item) => {
+      childParam = item
+    })
+    // @ts-ignore
+    const newBlock: ts.Block = processComponentBlock(nextNode, false, log);
+    const arrowNode: ts.ArrowFunction = ts.factory.createArrowFunction(undefined, undefined,
+      [], undefined, ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), newBlock);
+    const newPropertyAssignment:ts.PropertyAssignment = ts.factory.createPropertyAssignment(
+      ts.factory.createIdentifier(childParam), arrowNode);
+    // @ts-ignore
+    let argumentsArray: ts.ObjectLiteralExpression[] = node.expression.arguments;
+    if (argumentsArray && argumentsArray.length < 1) {
+      argumentsArray = [ts.factory.createObjectLiteralExpression([newPropertyAssignment], true)]
+    } else {
       // @ts-ignore
-      node.expression.arguments[0].properties.concat([newPropertyAssignment]), true)]
-  }
-  // @ts-ignore
-  node = ts.factory.updateExpressionStatement(node, ts.factory.updateCallExpression(node.expression,
+      argumentsArray = [ts.factory.createObjectLiteralExpression(
+        // @ts-ignore
+        node.expression.arguments[0].properties.concat([newPropertyAssignment]), true)]
+    }
     // @ts-ignore
-    node.expression.expression, node.expression.expression.typeArguments, argumentsArray))
-  return node;
+    node = ts.factory.updateExpressionStatement(node, ts.factory.updateCallExpression(node.expression,
+      // @ts-ignore
+      node.expression.expression, node.expression.expression.typeArguments, argumentsArray))
+    return node;
+  } else {
+    log.push({
+      type: LogType.ERROR,
+      message: `The attribute in '${name}'  should be decorated with '@BuilderParam' to receive .`,
+      pos: node.getStart()
+    });
+  }
 }
 
 function processInnerComponent(node: ts.ExpressionStatement, index: number, arr: ts.Statement[],

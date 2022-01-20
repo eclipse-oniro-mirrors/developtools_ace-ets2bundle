@@ -18,21 +18,14 @@ exports.source = `
 struct CustomContainer {
     header: string = "";
     footer: string = "";
-    @BuilderParam child: () => any;
+    @BuilderParam child1: () => any;
     
     build() {
         Column() {
+            this.child1()
             Text(this.header)
-            this.child()
             Text(this.footer)
         }
-    }
-}
-
-@Builder function specificParam(label1: string, label2: string) {
-    Column() {
-        Text(label1)
-        Text(label2)
     }
 }
 
@@ -42,7 +35,7 @@ struct CustomContainerUser {
     @Builder specificChild() {
         Column() {
             Text("My content1")
-            Text("My content1")
+            Text("My content2")
         }
     }
 
@@ -51,13 +44,9 @@ struct CustomContainerUser {
             CustomContainer({
                 header: "Header",
                 footer: "Footer",
-                child: this.specificChild
-            })
-            CustomContainer({
-                header: "Header",
-                footer: "Footer",
-                child: specificParam("content3", "content4")
-            })
+            }){
+                this.specificChild()
+            }
         }  
     }
 }
@@ -66,8 +55,8 @@ exports.expectResult =
 `class CustomContainer extends View {
     constructor(compilerAssignedUniqueChildId, parent, params) {
         super(compilerAssignedUniqueChildId, parent);
-        this.header = ""
-        this.footer = ""
+        this.header = "";
+        this.footer = "";
         this.updateWithValueParams(params);
     }
     updateWithValueParams(params) {
@@ -77,37 +66,28 @@ exports.expectResult =
         if (params.footer !== undefined) {
             this.footer = params.footer;
         }
-        this.__child = params.child;
+        this.__child1 = params.child1;
     }
     aboutToBeDeleted() {
-        this.__child.aboutToBeDeleted();
+        this.__child1.aboutToBeDeleted();
         SubscriberManager.Get().delete(this.id());
     }
-    get child(){
-        return this.__child.get();
+    get child1() {
+        return this.__child1.get();
     }
-    set child(newValue) {
-        this.__child.set(newValue)
+    set child1(newValue) {
+        this.__child1.set(newValue);
     }
     render() {
         Column.create();
         Text.create(this.header);
         Text.pop();
-        this.child();
         Text.create(this.footer);
         Text.pop();
         Column.pop();
     }
 }
-function specificParam(label1, label2) {
-    Column.create();
-    Text.create(label1);
-    Text.pop();
-    Text.create(label1);
-    Text.pop();
-    Column.pop();
-}
-class CustomContainerUser {
+class CustomContainerUser extends View {
     constructor(compilerAssignedUniqueChildId, parent, params) {
         super(compilerAssignedUniqueChildId, parent);
         this.updateWithValueParams(params);
@@ -132,35 +112,23 @@ class CustomContainerUser {
             View.create(new CustomContainer("2", this, {
                 header: "Header",
                 footer: "Footer",
-                child: this.specificChild
+                child1: () => {
+                    this.specificChild();
+                }
             }));
         }
         else {
             earlierCreatedChild_2.updateWithValueParams({
                 header: "Header",
                 footer: "Footer",
-                child: this.specificChild
+                child1: () => {
+                    this.specificChild();
+                }
             });
             View.create(earlierCreatedChild_2);
         }
-        let earlierCreatedChild_3 = this.findChildById("3");
-        if (earlierCreatedChild_3 == undefined) {
-            View.create(new CustomContainer("3", this, {
-                header: "Header",
-                footer: "Footer",
-                child: specificParam("content3", "content4")
-            }));
-        }
-        else {
-            earlierCreatedChild_3.updateWithValueParams({
-                header: "Header",
-                footer: "Footer",
-                child: specificParam("content3", "content4")
-            });
-            View.create(earlierCreatedChild_3);
-        }
-        Column.pop(); 
+        Column.pop();
     }
 }
-loadDocument(new MyComponent("1", undefined, {}));
+loadDocument(new CustomContainerUser("1", undefined, {}));
 `
