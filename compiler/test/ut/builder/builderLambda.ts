@@ -29,10 +29,10 @@ struct CustomContainer {
     }
 }
 
-@Builder function specificParam(label1: string, label2: string) {
+@Builder function specificParam() {
     Column() {
-        Text(label1)
-        Text(label2)
+        Text("label1")
+        Text("label2")
     }
 }
 
@@ -47,7 +47,7 @@ struct CustomContainerUser {
                         .width(50)
                     Text("content2")
                 }
-                specificParam("content3", "content4")
+                specificParam()
             }
         }  
     }
@@ -68,32 +68,26 @@ exports.expectResult =
         if (params.footer !== undefined) {
             this.footer = params.footer;
         }
-        this.__child = params.child;
+        this.child = params.child;
     }
     aboutToBeDeleted() {
-        this.__child.aboutToBeDeleted();
         SubscriberManager.Get().delete(this.id());
-    }
-    get child() {
-        return this.__child.get();
-    }
-    set child(newValue) {
-        this.__child.set(newValue);
     }
     render() {
         Column.create();
         Text.create(this.header);
         Text.pop();
+        this.child();
         Text.create(this.footer);
         Text.pop();
         Column.pop();
     }
 }
-function specificParam(label1, label2) {
+function specificParam() {
     Column.create();
-    Text.create(label1);
+    Text.create("label1");
     Text.pop();
-    Text.create(label2);
+    Text.create("label2");
     Text.pop();
     Column.pop();
 }
@@ -121,7 +115,7 @@ class CustomContainerUser extends View {
                     Text.create("content2");
                     Text.pop();
                     Column.pop();
-                    specificParam("content3", "content4");
+                    specificParam();
                 }
             }));
         }
@@ -136,7 +130,7 @@ class CustomContainerUser extends View {
                     Text.create("content2");
                     Text.pop();
                     Column.pop();
-                    specificParam("content3", "content4");
+                    specificParam();
                 }
             });
             View.create(earlierCreatedChild_2);

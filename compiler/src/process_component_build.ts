@@ -177,7 +177,8 @@ export function processComponentChild(node: ts.Block | ts.SourceFile, newStateme
           case ComponentType.forEachComponent:
             processForEachComponent(item, newStatements, log);
             break;
-          case ComponentType.customBuilderMethod || ComponentType.builderParamMethod:
+          case ComponentType.customBuilderMethod:
+          case ComponentType.builderParamMethod:
             newStatements.push(item);
             break;
         }
