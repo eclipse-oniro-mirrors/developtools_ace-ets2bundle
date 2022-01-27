@@ -1,6 +1,6 @@
 {
     "name": "SideBarContainer",
     "attrs": [
-        "showControlButton", "onChange"
+        "showControlButton", "onChange", "sideBarWidth", "maxSideBarWidth", "maxSideBarWidth"
     ]
   }
