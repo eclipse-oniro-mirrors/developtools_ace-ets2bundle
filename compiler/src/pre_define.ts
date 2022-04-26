@@ -214,7 +214,9 @@ export const COUNT: string = 'count';
 export const $$_THIS: string = '$$this';
 export const $$_NEW_VALUE: string = 'newValue';
 export const $$: string = '$$';
+export const $$_VISIBILITY: string = 'visibility';
 
+export const STYLE_ADD_DOUBLE_DOLLAR: Set<string> = new Set([BIND_POPUP, $$_VISIBILITY])
 export const PROPERTIES_ADD_DOUBLE_DOLLAR: Map<string, Set<string>> = new Map([
   [RADIO, new Set([CHECKED])], [TEXT_TIMER, new Set([FORMAT, COUNT, IS_COUNT_DOWN])],
 ]);;
