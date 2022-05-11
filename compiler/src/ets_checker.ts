@@ -28,7 +28,7 @@ import {
   COMPONENT_IF,
   COMPONENT_DECORATORS_PARAMS,
   COMPONENT_BUILD_FUNCTION,
-  BIND_POPUP,
+  STYLE_ADD_DOUBLE_DOLLAR,
   $$,
   PROPERTIES_ADD_DOUBLE_DOLLAR
 } from './pre_define';
@@ -307,6 +307,9 @@ function loopNodeFindDoubleDollar(node: ts.Node, parentComponentName: string): v
             }
           });
         }
+        if (STYLE_ADD_DOUBLE_DOLLAR.has(node.expression.getText()) && ts.isPropertyAccessExpression(item)) {
+          doubleDollarCollection(item);
+        }
       });
     }
     node = node.expression;
@@ -331,7 +334,7 @@ function isObjectPram(param: ts.Node, parentComponentName:string): boolean {
 function isCanAddDoubleDollar(propertyName: string, parentComponentName: string): boolean {
   return PROPERTIES_ADD_DOUBLE_DOLLAR.has(parentComponentName) &&
     PROPERTIES_ADD_DOUBLE_DOLLAR.get(parentComponentName).has(propertyName) ||
-    propertyName === BIND_POPUP;
+    STYLE_ADD_DOUBLE_DOLLAR.has(propertyName);
 }
 
 function isDecoratorCollection(item: ts.Decorator, decoratorName: string): boolean {

@@ -48,7 +48,7 @@ import {
   THIS,
   VISUAL_STATE,
   VIEW_STACK_PROCESSOR,
-  BIND_POPUP,
+  STYLE_ADD_DOUBLE_DOLLAR,
   $$_VALUE,
   $$_CHANGE_EVENT,
   $$_THIS,
@@ -961,7 +961,7 @@ function isDoubleDollarToChange(isStylesAttr: boolean, identifierNode: ts.Identi
   return !isStylesAttr && 
     PROPERTIES_ADD_DOUBLE_DOLLAR.has(identifierNode.escapedText.toString()) && 
     PROPERTIES_ADD_DOUBLE_DOLLAR.get(identifierNode.escapedText.toString()).has(propName) ||
-    propName === BIND_POPUP && temp.arguments.length && temp.arguments[0] ?
+    STYLE_ADD_DOUBLE_DOLLAR.has(propName) && temp.arguments.length && temp.arguments[0] ?
       temp.arguments[0].getText().match(/^\$\$(.|\n)+/) !== null ? true : false
     : false;
 }
@@ -1013,11 +1013,12 @@ function changeEtsComponentKind(node: ts.Node): ts.Node {
 
 function classifyArgumentsNum(args: any, argumentsArr: ts.Expression[], propName: string,
   identifierNode: ts.Identifier): void {
-  if (propName === BIND_POPUP && args.length === 2) {
+  if (STYLE_ADD_DOUBLE_DOLLAR.has(propName) && args.length === 2) {
     const varExp: ts.Expression = updateArgumentFor$$(args[0]);
     argumentsArr.push(generateObjectFor$$(varExp), args[1]);
   } else if (PROPERTIES_ADD_DOUBLE_DOLLAR.has(identifierNode.getText()) && args.length === 1 &&
-    PROPERTIES_ADD_DOUBLE_DOLLAR.get(identifierNode.getText()).has(propName)) {
+    PROPERTIES_ADD_DOUBLE_DOLLAR.get(identifierNode.getText()).has(propName) ||
+    STYLE_ADD_DOUBLE_DOLLAR.has(propName) && args.length === 1) {
     const varExp: ts.Expression = updateArgumentFor$$(args[0]);
     argumentsArr.push(varExp, createArrowFunctionFor$$(varExp));
   }
