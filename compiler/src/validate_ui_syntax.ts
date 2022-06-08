@@ -884,7 +884,8 @@ function replaceOhmStartsWithBundle(url: string, item: string, importValue: stri
   if (urlResult) {
     const moduleKind: string = urlResult[3];
     if (moduleKind === 'lib') {
-      item = replaceLibSo(importValue, moduleRequest, sourcePath);
+      const libSoKey: string = urlResult[4];
+      item = replaceLibSo(importValue, libSoKey, sourcePath);
     }
   }
   return item;
@@ -898,7 +899,7 @@ function replaceOhmStartsWithModule(url: string, item: string, importValue: stri
     const modulePath: string = urlResult[3];
     const bundleName: string = getPackageInfo(projectConfig.aceModuleJsonPath)[0];
     moduleRequest = `@bundle:${bundleName}/${moduleName}/${moduleKind}/${modulePath}`;
-    item = moduleKind === 'lib' ? replaceLibSo(importValue, moduleRequest, sourcePath) :
+    item = moduleKind === 'lib' ? replaceLibSo(importValue, modulePath, sourcePath) :
       item.replace(/['"](\S+)['"]/, '\"' + moduleRequest + '\"');
   }
   return item;
