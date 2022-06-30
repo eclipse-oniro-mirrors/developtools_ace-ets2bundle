@@ -333,7 +333,21 @@ function processBuildMember(node: ts.MethodDeclaration, context: ts.Transformati
     if (isProperty(node)) {
       node = createReference(node as ts.PropertyAssignment, log);
     }
+    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.name) &&
+      stateObjectCollection.has(checkStateName(node)) && node.parent && ts.isCallExpression(node.parent) &&
+      ts.isPropertyAccessExpression(node.parent.expression) &&
+      node.parent.expression.name.escapedText.toString() !== FOREACH_GET_RAW_OBJECT) {
+      return ts.factory.createCallExpression(ts.factory.createPropertyAccessExpression(
+        ts.factory.createIdentifier(FOREACH_OBSERVED_OBJECT),
+        ts.factory.createIdentifier(FOREACH_GET_RAW_OBJECT)), undefined, [node]);
+    }
     return ts.visitEachChild(node, visitBuild, context);
+  }
+  function checkStateName(node: ts.PropertyAccessExpression): string {
+    if (node.expression && !node.expression.expression && node.name && ts.isIdentifier(node.name)) {
+      return node.name.escapedText.toString();
+    }
+    return null;
   }
 }
 
