@@ -205,7 +205,7 @@ export class GenAbcPlugin {
 
 function clearGlobalInfo() {
   // fix bug of multi trigger
-  if (!process.env.watchMode) {
+  if (process.env.watchMode !== 'true') {
     intermediateJsBundle = [];
     moduleInfos = [];
   }
@@ -529,7 +529,7 @@ export function initAbcEnv() : string[] {
 }
 
 function invokeCluterModuleToAbc(): void {
-  if (process.env.watchMode) {
+  if (process.env.watchMode === 'true') {
     process.exitCode = SUCCESS;
   }
   filterIntermediateModuleByHashJson(buildPathInfo, moduleInfos);
@@ -573,7 +573,7 @@ function invokeCluterModuleToAbc(): void {
       if (count_ === totalWorkerNumber) {
         writeModuleHashJson();
         clearGlobalInfo();
-        if (process.env.watchMode) {
+        if (process.env.watchMode === 'true') {
           console.info(blue, 'COMPILE RESULT:SUCCESS ', reset);
         }
       }
@@ -657,7 +657,7 @@ function judgeModuleWorkersToGenAbc(callback): void {
 }
 
 function invokeWorkersToGenAbc(): void {
-  if (process.env.watchMode) {
+  if (process.env.watchMode === 'true') {
     process.exitCode = SUCCESS;
   }
   let cmdPrefix: string = '';
@@ -709,7 +709,7 @@ function invokeWorkersToGenAbc(): void {
       count_++;
       if (count_ === workerNumber) {
         // for preview of with incre compile
-        if (process.env.watchMode) {
+        if (process.env.watchMode === 'true') {
           processExtraAssetForBundle();
           console.info(red, 'COMPILE RESULT:SUCCESS ', reset);
         }
@@ -723,7 +723,7 @@ function invokeWorkersToGenAbc(): void {
     });
 
     // for preview of without incre compile
-    if (workerNumber === 0 && process.env.watchMode) {
+    if (workerNumber === 0 && process.env.watchMode === 'true') {
       processExtraAssetForBundle();
     }
   }
@@ -816,7 +816,7 @@ function writeModuleHashJson(): void {
     return;
   }
   // fix bug of multi trigger
-  if (!process.env.watchMode || delayCount < 1) {
+  if (process.env.watchMode !== 'true' || delayCount < 1) {
     fs.writeFileSync(hashFilePath, JSON.stringify(moduleHashJsonObject));
   }
 }
@@ -892,7 +892,7 @@ function writeHashJson(): void {
     return;
   }
   // fix bug of multi trigger
-  if (!process.env.watchMode || delayCount < 1) {
+  if (process.env.watchMode !== 'true' || delayCount < 1) {
     fs.writeFileSync(hashFilePath, JSON.stringify(hashJsonObject));
   }
 }

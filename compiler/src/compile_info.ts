@@ -281,7 +281,7 @@ export class ResultStates {
   }
 
   private shouldWriteChangedList(watchModifiedFiles: string[], watchRemovedFiles: string[]): boolean {
-    return projectConfig.compileMode === ESMODULE && process.env.watchMode && !projectConfig.isPreview &&
+    return projectConfig.compileMode === ESMODULE && process.env.watchMode === 'true' && !projectConfig.isPreview &&
       projectConfig.outChangedFileList && (watchRemovedFiles.length + watchModifiedFiles.length) &&
       !(watchModifiedFiles.length === 1 && watchModifiedFiles[0] == projectConfig.projectPath);
   }
@@ -372,13 +372,13 @@ export class ResultStates {
       if (this.noteCount > 0) {
         resultInfo += ` NOTE:${this.noteCount}`;
       }
-      if (result === 'SUCCESS ' && process.env.watchMode) {
+      if (result === 'SUCCESS ' && process.env.watchMode === 'true') {
         this.printPreviewResult(resultInfo);
       } else {
         logger.info(this.blue, 'COMPILE RESULT:' + result + `{${resultInfo}}`, this.reset);
       }
     } else {
-      if (process.env.watchMode) {
+      if (process.env.watchMode === 'true') {
         this.printPreviewResult();
       } else {
         console.info(this.blue, 'COMPILE RESULT:SUCCESS ', this.reset);

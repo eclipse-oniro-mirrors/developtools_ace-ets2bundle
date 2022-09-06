@@ -192,7 +192,7 @@ function visitAllNode(node: ts.Node, sourceFile: ts.SourceFile, defaultNameFromP
   if (ts.isExportDeclaration(node) && node.exportClause &&
     ts.isNamedExports(node.exportClause) && node.exportClause.elements) {
     node.exportClause.elements.forEach(item => {
-      if (process.env.watchMode) {
+      if (process.env.watchMode === 'true') {
         exportCollection.add((item.propertyName ? item.propertyName : item.name).escapedText.toString());
       }
       if (item.name && ts.isIdentifier(item.name)) {
@@ -222,7 +222,7 @@ function visitAllNode(node: ts.Node, sourceFile: ts.SourceFile, defaultNameFromP
   }
   if (ts.isExportDeclaration(node) && node.moduleSpecifier &&
     ts.isStringLiteral(node.moduleSpecifier)) {
-    if (process.env.watchMode && node.exportClause && ts.isNamedExports(node.exportClause) &&
+    if (process.env.watchMode === 'true' && node.exportClause && ts.isNamedExports(node.exportClause) &&
       node.exportClause.elements) {
       node.exportClause.elements.forEach(item => {
         exportCollection.add((item.propertyName ? item.propertyName : item.name).escapedText.toString());
@@ -290,7 +290,7 @@ function collectSpecialFunctionNode(node: ts.FunctionDeclaration, asNameFromPare
 function isExportEntry(node: ts.ClassDeclaration, log: LogInfo[], entryCollection: Set<string>,
   exportCollection: Set<string>, defaultCollection: Set<string>, fileResolvePath: string,
   sourceFile: ts.SourceFile): void {
-  if (process.env.watchMode && node && node.decorators) {
+  if (process.env.watchMode === 'true' && node && node.decorators) {
     let existExport: boolean = false;
     let existEntry: boolean = false;
     if (node.modifiers) {
