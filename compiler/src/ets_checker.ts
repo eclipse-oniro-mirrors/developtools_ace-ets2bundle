@@ -219,6 +219,7 @@ function createOrUpdateCache(resolvedModules: ts.ResolvedModuleFull[], containin
       if (value) {
         value.mtimeMs = mtimeMs;
         value.error = error;
+        value.parent = value.parent || [];
         value.parent.push(path.resolve(containingFile));
         value.parent = [...new Set(value.parent)];
       } else {

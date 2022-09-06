@@ -541,7 +541,7 @@ function checkNeedUpdateFiles(file: string, needUpdate: NeedUpdateFlag, alreadyC
       checkNeedUpdateFiles(value.children[i], needUpdate, alreadyCheckedFiles);
     }
   } else {
-    cache[file] = { mtimeMs, children: [], error: false };
+    cache[file] = { mtimeMs, children: [], parent: [], error: false };
     needUpdate.flag = true;
   }
 }
