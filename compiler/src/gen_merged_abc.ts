@@ -35,6 +35,17 @@ const red: string = '\u001b[31m';
 const reset: string = '\u001b[39m';
 
 function generateCompileFilesInfo(moduleInfos: Array<ModuleInfo>) {
+  const tempModuleInfos: ModuleInfo[] = Array<ModuleInfo>();
+  moduleInfos.forEach((item) => {
+    let check: boolean = tempModuleInfos.every((newItem) => {
+      return item.tempFilePath !== newItem.tempFilePath;
+    });
+    if (check) {
+      tempModuleInfos.push(item);
+    }
+  });
+  moduleInfos = tempModuleInfos;
+
   const filesInfoPath: string = path.join(process.env.cachePath, FILESINFO_TXT);
   let filesInfo: string = '';
   moduleInfos.forEach(info => {

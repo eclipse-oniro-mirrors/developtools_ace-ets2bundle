@@ -380,7 +380,6 @@ function loadModuleInfo(projectConfig, envArgs) {
     projectConfig.modulePathMap = buildJsonInfo.modulePathMap;
     projectConfig.isOhosTest = buildJsonInfo.isOhosTest;
     projectConfig.processTs = false;
-    projectConfig.processMergeabc = false;
     projectConfig.buildArkMode = envArgs.buildMode;
     if (buildJsonInfo.compileMode === 'esmodule') {
       projectConfig.nodeModulesPath = buildJsonInfo.nodeModulesPath;

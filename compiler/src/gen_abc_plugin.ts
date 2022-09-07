@@ -148,11 +148,11 @@ export class GenAbcPlugin {
     }
 
     // case ESMODULE
-    //        | --- merge -- debug -- not removeDir
-    //        | --- merge -- release -- removeDir
-    //        | --- unmerge -- removeDir
+    //        | --- es2abc -- debug -- not removeDir
+    //        | --- es2abc -- release -- removeDir
+    //        | --- ts2abc -- removeDir
     if (projectConfig.compileMode === ESMODULE) {
-      if (!projectConfig.processMergeabc || projectConfig.buildArkMode !== 'debug') {
+      if ((projectConfig.buildArkMode !== 'debug' && process.env.panda === ES2ABC) || process.env.panda === TS2ABC) {
         removeDir(output);
         removeDir(projectConfig.nodeModulesPath);
       }
@@ -207,8 +207,8 @@ function clearGlobalInfo() {
   // fix bug of multi trigger
   if (!process.env.watchMode) {
     intermediateJsBundle = [];
-    moduleInfos = [];
   }
+  moduleInfos = [];
   fileterIntermediateJsBundle = [];
   filterModuleInfos = [];
   commonJsModuleInfos = [];
@@ -216,6 +216,7 @@ function clearGlobalInfo() {
   entryInfos = new Map<string, EntryInfo>();
   hashJsonObject = {};
   moduleHashJsonObject = {};
+  buildMapFileList = [];
 }
 
 function getEntryInfo(tempFilePath: string, resourceResolveData: any): void {
@@ -351,7 +352,11 @@ function eliminateUnusedFiles(moduleList: Array<string>): void{
   let cachedModuleList: Array<string> = getCachedModuleList();
   if (cachedModuleList.length !== 0) {
     const eliminateFiles: Array<string> = cachedModuleList.filter(m => !moduleList.includes(m));
-    eliminateFiles.forEach((file) => {fs.unlinkSync(file);});
+    eliminateFiles.forEach((file) => {
+      if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
+      }
+    });
   }
 }
 
@@ -382,12 +387,13 @@ function handleFinishModules(modules, callback): any {
     }
   });
 
-  if (projectConfig.processMergeabc) {
+  if (projectConfig.compileMode === ESMODULE && process.env.panda !== TS2ABC) {
     if (projectConfig.buildArkMode === 'debug') {
       eliminateUnusedFiles(buildMapFileList);
       updateCachedModuleList(buildMapFileList);
     }
     generateMergedAbc(moduleInfos, entryInfos);
+    clearGlobalInfo();
   } else {
     judgeModuleWorkersToGenAbc(invokeWorkersModuleToGenAbc);
     processEntryToGenAbc(entryInfos);
@@ -518,7 +524,7 @@ export function initAbcEnv() : string[] {
     if (isDebug) {
       args.push('--debug-info');
     }
-    if (projectConfig.processMergeabc) {
+    if (projectConfig.compileMode === ESMODULE) {
       args.push('--merge-abc');
     }
   }  else {
