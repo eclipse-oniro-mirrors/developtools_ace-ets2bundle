@@ -1548,7 +1548,8 @@ function updateArgumentFor$$(argument: any): ts.Expression {
 
 function verifyComponentId(temp: any, node: ts.Identifier, propName: string,
   log: LogInfo[]): void {
-  if (!newsupplement.isAcceleratePreview && propName === ATTRIBUTE_ID) {
+  if (!newsupplement.isAcceleratePreview && propName === ATTRIBUTE_ID &&
+    ts.isStringLiteral(temp.arguments[0])) {
     const id: string = temp.arguments[0].text;
     const posOfNode: ts.LineAndCharacter = transformLog.sourceFile
       .getLineAndCharacterOfPosition(getRealNodePos(node));
