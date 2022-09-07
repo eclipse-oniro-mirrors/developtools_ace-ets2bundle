@@ -95,6 +95,9 @@ function loadEntryObj(projectConfig) {
     if (fs.existsSync(projectConfig.manifestFilePath)) {
       const jsonString = fs.readFileSync(projectConfig.manifestFilePath).toString();
       manifest = JSON.parse(jsonString);
+      if (manifest && manifest.minPlatformVersion) {
+        partialUpdateController(manifest.minPlatformVersion);
+      }
       projectConfig.pagesJsonFileName = 'config.json';
     } else if (projectConfig.aceModuleJsonPath && fs.existsSync(projectConfig.aceModuleJsonPath)) {
       process.env.compileMode = 'moduleJson';
@@ -127,6 +130,9 @@ function buildManifest(manifest, aceConfigPath) {
   try {
     const moduleConfigJson = JSON.parse(fs.readFileSync(aceConfigPath).toString());
     manifest.type = process.env.abilityType;
+    if (moduleConfigJson && moduleConfigJson.app && moduleConfigJson.app.minAPIVersion) {
+      partialUpdateController(moduleConfigJson.app.minAPIVersion);
+    }
     if (moduleConfigJson.module) {
       manifest.pages = getPages(moduleConfigJson);
     } else {
@@ -385,9 +391,6 @@ function loadModuleInfo(projectConfig, envArgs) {
       projectConfig.nodeModulesPath = buildJsonInfo.nodeModulesPath;
     }
     projectConfig.pandaMode = buildJsonInfo.pandaMode;
-    if (buildJsonInfo.compatibleSdkVersion >= 9) {
-      partialUpdateConfig.partialUpdateMode = true;
-    }
   }
 }
 
@@ -433,12 +436,22 @@ function addSDKBuildDependencies(config) {
   }
 }
 
+function partialUpdateController(minAPIVersion) {
+  if (partialUpdateConfig.alwaysClose) {
+    return;
+  }
+  if (minAPIVersion >= 9) {
+    partialUpdateConfig.partialUpdateMode = true;
+  }
+}
+
 const globalProgram = {
   program: null,
   watchProgram: null
 };
 
 const partialUpdateConfig = {
+  alwaysClose: true,
   partialUpdateMode: false
 };
 
