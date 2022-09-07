@@ -141,7 +141,8 @@ const resolvedModulesCache: Map<string, ts.ResolvedModuleFull[]> = new Map();
 
 function resolveModuleNames(moduleNames: string[], containingFile: string): ts.ResolvedModuleFull[] {
   const resolvedModules: ts.ResolvedModuleFull[] = [];
-  if (![...shouldResolvedFiles].length || shouldResolvedFiles.has(path.resolve(containingFile))) {
+  if (![...shouldResolvedFiles].length || shouldResolvedFiles.has(path.resolve(containingFile))
+    || !resolvedModulesCache[containingFile]) {
     for (const moduleName of moduleNames) {
       const result = ts.resolveModuleName(moduleName, containingFile, compilerOptions, {
         fileExists(fileName: string): boolean {
