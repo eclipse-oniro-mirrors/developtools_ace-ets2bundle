@@ -471,6 +471,9 @@ function getFileResolvePath(fileResolvePath: string, pagesDir: string, filePath:
       fileResolvePath = fileResolvePath + EXTNAME_ETS;
     } else if (isPackageJsonEntry(fileResolvePath)) {
       fileResolvePath = getPackageJsonEntry(fileResolvePath);
+      if (fs.statSync(fileResolvePath).isDirectory() && fs.existsSync(path.join(fileResolvePath, INDEX_ETS))) {
+        fileResolvePath = path.join(fileResolvePath, INDEX_ETS);
+      }
     } else if (fs.existsSync(path.join(fileResolvePath, INDEX_ETS))) {
       fileResolvePath = path.join(fileResolvePath, INDEX_ETS);
     }
