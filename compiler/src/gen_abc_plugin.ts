@@ -841,7 +841,7 @@ function writeHashJson(): void {
       process.exitCode = FAIL;
       break;
     }
-    if (!fs.existsSync(abcFile)) {
+    if (process.env.cachePath !== undefined) {
       mkdirsSync(path.dirname(abcFile));
       fs.copyFileSync(cacheAbcFilePath, abcFile);
     }
