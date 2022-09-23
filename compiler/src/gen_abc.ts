@@ -31,9 +31,9 @@ const reset: string = '\u001b[39m';
 function js2abcByWorkers(jsonInput: string, cmd: string): Promise<void> {
   const inputPaths: any = JSON.parse(jsonInput);
   for (let i = 0; i < inputPaths.length; ++i) {
-    const input: string = inputPaths[i].path;
+    const input: string = inputPaths[i].path.replace(/\.temp\.js$/, "_.js");
     const cacheOutputPath: string = inputPaths[i].cacheOutputPath;
-    const cacheAbcFilePath: string = cacheOutputPath.replace(/\_.js$/, ".abc");
+    const cacheAbcFilePath: string = cacheOutputPath.replace(/\.temp\.js$/, ".abc");
     const singleCmd: any = `${cmd} "${cacheOutputPath}" -o "${cacheAbcFilePath}" --source-file "${input}"`;
     logger.debug('gen abc cmd is: ', singleCmd, ' ,file size is:', inputPaths[i].size, ' byte');
     try {
@@ -50,9 +50,9 @@ function js2abcByWorkers(jsonInput: string, cmd: string): Promise<void> {
 function es2abcByWorkers(jsonInput: string, cmd: string): Promise<void> {
   const inputPaths: any = JSON.parse(jsonInput);
   for (let i = 0; i < inputPaths.length; ++i) {
-    const input: string = inputPaths[i].path;
+    const input: string = inputPaths[i].path.replace(/\.temp\.js$/, "_.js");
     const cacheOutputPath: string = inputPaths[i].cacheOutputPath;
-    const cacheAbcFilePath: string = cacheOutputPath.replace(/\_.js$/, ".abc");
+    const cacheAbcFilePath: string = cacheOutputPath.replace(/\.temp\.js$/, ".abc");
     const singleCmd: any = `${cmd} "${cacheOutputPath}" --output "${cacheAbcFilePath}" --source-file "${input}"`;
     logger.debug('gen abc cmd is: ', singleCmd, ' ,file size is:', inputPaths[i].size, ' byte');
     try {
