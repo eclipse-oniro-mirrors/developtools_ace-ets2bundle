@@ -18,6 +18,7 @@ import * as path from 'path';
 import cluster from 'cluster';
 import process from 'process';
 import os from 'os';
+import events from 'events';
 import Compiler from 'webpack/lib/Compiler';
 import { logger } from './compile_info';
 import {
@@ -62,7 +63,8 @@ let isDebug: boolean = false;
 let arkDir: string;
 let nodeJs: string;
 
-let delayCount = 0;
+let previewCount: number = 0;
+let compileCount: number = 0;
 interface File {
   path: string,
   size: number,
@@ -147,11 +149,15 @@ export class GenAbcPlugin {
       removeDir(projectConfig.nodeModulesPath);
     }
 
+    // for preview mode max listeners
+    events.EventEmitter.defaultMaxListeners = 100;
+
     compiler.hooks.compilation.tap('GenAbcPlugin', (compilation) => {
       if (projectConfig.compileMode === JSBUNDLE || projectConfig.compileMode === undefined) {
         return;
       }
       buildPathInfo = output;
+      previewCount++;
       compilation.hooks.finishModules.tap('finishModules', handleFinishModules.bind(this));
     });
 
@@ -190,7 +196,8 @@ export class GenAbcPlugin {
         return;
       }
       buildPathInfo = output;
-      judgeWorkersToGenAbc(invokeWorkersToGenAbc);
+      previewCount++;
+      invokeWorkersToGenAbc();
     });
   }
 }
@@ -200,12 +207,12 @@ function clearGlobalInfo() {
   if (!projectConfig.isPreview) {
     intermediateJsBundle = [];
     moduleInfos = [];
+    entryInfos = new Map<string, EntryInfo>();
   }
   fileterIntermediateJsBundle = [];
   filterModuleInfos = [];
   commonJsModuleInfos = [];
   ESMModuleInfos = [];
-  entryInfos = new Map<string, EntryInfo>();
   hashJsonObject = {};
   moduleHashJsonObject = {};
 }
@@ -340,7 +347,7 @@ function handleFinishModules(modules, callback): any {
     }
   });
 
-  judgeModuleWorkersToGenAbc(invokeWorkersModuleToGenAbc);
+  invokeWorkersModuleToGenAbc(moduleInfos);
   processEntryToGenAbc(entryInfos);
 }
 
@@ -513,6 +520,9 @@ function invokeCluterModuleToAbc(): void {
     totalWorkerNumber += esmWorkerNumber;
 
     let count_ = 0;
+    if (projectConfig.isPreview) {
+      cluster.removeAllListeners("exit");
+    }
     cluster.on('exit', (worker, code, signal) => {
       if (code === FAIL || process.exitCode === FAIL) {
         process.exitCode = FAIL;
@@ -522,8 +532,14 @@ function invokeCluterModuleToAbc(): void {
       if (count_ === totalWorkerNumber) {
         writeModuleHashJson();
         clearGlobalInfo();
-        if (projectConfig.isPreview) {
+        if (projectConfig.isPreview && compileCount < previewCount) {
+          compileCount++;
           console.info(blue, 'COMPILE RESULT:SUCCESS ', reset);
+          if (compileCount >= previewCount) {
+            return;
+          }
+          invokeWorkersModuleToGenAbc(moduleInfos);
+          processEntryToGenAbc(entryInfos);
         }
       }
       logger.debug(`worker ${worker.process.pid} finished`);
@@ -583,28 +599,6 @@ function splitModulesByNumber(moduleInfos: Array<ModuleInfo>, workerNumber: numb
   return result;
 }
 
-function judgeWorkersToGenAbc(callback): void {
-  const workerNum: number = Object.keys(cluster.workers).length;
-  if (workerNum === 0) {
-    callback();
-    return;
-  } else {
-    delayCount++;
-    setTimeout(judgeWorkersToGenAbc.bind(null, callback), 50);
-  }
-}
-
-function judgeModuleWorkersToGenAbc(callback): void {
-  const workerNum: number = Object.keys(cluster.workers).length;
-  if (workerNum === 0) {
-    callback(moduleInfos);
-    return;
-  } else {
-    delayCount++;
-    setTimeout(judgeModuleWorkersToGenAbc.bind(null, callback), 50);
-  }
-}
-
 function invokeWorkersToGenAbc(): void {
   if (projectConfig.isPreview) {
     process.exitCode = SUCCESS;
@@ -650,6 +644,10 @@ function invokeWorkersToGenAbc(): void {
     }
 
     let count_ = 0;
+    if (projectConfig.isPreview) {
+      process.removeAllListeners("exit");
+      cluster.removeAllListeners("exit");
+    }
     cluster.on('exit', (worker, code, signal) => {
       if (code === FAIL || process.exitCode === FAIL) {
         process.exitCode = FAIL;
@@ -658,9 +656,14 @@ function invokeWorkersToGenAbc(): void {
       count_++;
       if (count_ === workerNumber) {
         // for preview of with incre compile
-        if (projectConfig.isPreview) {
+        if (projectConfig.isPreview && compileCount < previewCount) {
+          compileCount++;
           processExtraAssetForBundle();
           console.info(red, 'COMPILE RESULT:SUCCESS ', reset);
+          if (compileCount >= previewCount) {
+            return;
+          }
+          invokeWorkersToGenAbc();
         }
       }
       logger.debug(`worker ${worker.process.pid} finished`);
@@ -765,7 +768,7 @@ function writeModuleHashJson(): void {
     return;
   }
   // fix bug of multi trigger
-  if (!projectConfig.isPreview || delayCount < 1) {
+  if (!projectConfig.isPreview || previewCount < 1) {
     fs.writeFileSync(hashFilePath, JSON.stringify(moduleHashJsonObject));
   }
 }
@@ -841,7 +844,7 @@ function writeHashJson(): void {
     return;
   }
   // fix bug of multi trigger
-  if (!projectConfig.isPreview || delayCount < 1) {
+  if (!projectConfig.isPreview || previewCount < 1) {
     fs.writeFileSync(hashFilePath, JSON.stringify(hashJsonObject));
   }
 }
