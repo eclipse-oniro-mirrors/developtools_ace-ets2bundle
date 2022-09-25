@@ -107,7 +107,7 @@ export class ResultStates {
               if (map && map.size != 0) {
                 let names: Array<string> = Array.from(map).flat();
                 let sourcemapObj: any = JSON.parse(assets[key]._value);
-                sourcemapObj.names = names;
+                sourcemapObj.nameMap = names;
                 assets[key]._value = JSON.stringify(sourcemapObj);
               }
             }
