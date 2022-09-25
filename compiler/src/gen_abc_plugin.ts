@@ -18,6 +18,7 @@ import * as path from 'path';
 import cluster from 'cluster';
 import process from 'process';
 import os from 'os';
+import events from 'events';
 import Compiler from 'webpack/lib/Compiler';
 import { logger } from './compile_info';
 import {
@@ -49,10 +50,10 @@ import {
   EXTNAME_JS_MAP,
   TS2ABC,
   ES2ABC,
-  TEMPORARY
+  TEMPORARY,
+  SUCCESS
 } from './pre_define';
 
-const firstFileEXT: string = '_.js';
 const genAbcScript: string = 'gen_abc.js';
 const genModuleAbcScript: string = 'gen_module_abc.js';
 let output: string;
@@ -62,7 +63,8 @@ let isDebug: boolean = false;
 let arkDir: string;
 let nodeJs: string;
 
-let delayCount = 0;
+let previewCount: number = 0;
+let compileCount: number = 0;
 interface File {
   path: string,
   size: number,
@@ -147,11 +149,15 @@ export class GenAbcPlugin {
       removeDir(projectConfig.nodeModulesPath);
     }
 
+    // for preview mode max listeners
+    events.EventEmitter.defaultMaxListeners = 100;
+
     compiler.hooks.compilation.tap('GenAbcPlugin', (compilation) => {
       if (projectConfig.compileMode === JSBUNDLE || projectConfig.compileMode === undefined) {
         return;
       }
       buildPathInfo = output;
+      previewCount++;
       compilation.hooks.finishModules.tap('finishModules', handleFinishModules.bind(this));
     });
 
@@ -176,8 +182,8 @@ export class GenAbcPlugin {
         // choose *.js
         if (output && path.extname(key) === EXTNAME_JS) {
           const newContent: string = compilation.assets[key].source();
-          const keyPath: string = key.replace(/\.js$/, firstFileEXT);
-          writeFileSync(newContent, path.resolve(output, keyPath), key);
+          const keyPath: string = key.replace(/\.js$/, ".temp.js");
+          writeFileSync(newContent, output, keyPath, key);
         }
       });
     });
@@ -186,8 +192,12 @@ export class GenAbcPlugin {
       if (projectConfig.compileMode === ESMODULE) {
         return;
       }
+      if (intermediateJsBundle.length === 0) {
+        return;
+      }
       buildPathInfo = output;
-      judgeWorkersToGenAbc(invokeWorkersToGenAbc);
+      previewCount++;
+      invokeWorkersToGenAbc();
     });
   }
 }
@@ -197,12 +207,12 @@ function clearGlobalInfo() {
   if (!projectConfig.isPreview) {
     intermediateJsBundle = [];
     moduleInfos = [];
+    entryInfos = new Map<string, EntryInfo>();
   }
   fileterIntermediateJsBundle = [];
   filterModuleInfos = [];
   commonJsModuleInfos = [];
   ESMModuleInfos = [];
-  entryInfos = new Map<string, EntryInfo>();
   hashJsonObject = {};
   moduleHashJsonObject = {};
 }
@@ -337,7 +347,7 @@ function handleFinishModules(modules, callback): any {
     }
   });
 
-  judgeModuleWorkersToGenAbc(invokeWorkersModuleToGenAbc);
+  invokeWorkersModuleToGenAbc(moduleInfos);
   processEntryToGenAbc(entryInfos);
 }
 
@@ -356,16 +366,17 @@ function processEntryToGenAbc(entryInfos: Map<string, EntryInfo>): void {
   }
 }
 
-function writeFileSync(inputString: string, output: string, jsBundleFile: string): void {
+function writeFileSync(inputString: string, buildPath: string, keyPath: string, jsBundleFile: string): void {
+  let output = path.resolve(buildPath, keyPath);
   let parent: string = path.join(output, '..');
   if (!(fs.existsSync(parent) && fs.statSync(parent).isDirectory())) {
     mkDir(parent);
   }
-  let buildParentPath: string = path.join(projectConfig.buildPath, '..');
-  let sufStr: string = output.replace(buildParentPath, '');
   let cacheOutputPath: string = "";
   if (process.env.cachePath) {
-    cacheOutputPath = path.join(process.env.cachePath, TEMPORARY, sufStr);
+    let buildDirArr: string[] = projectConfig.buildPath.split(path.sep);
+    let abilityDir: string = buildDirArr[buildDirArr.length - 1];
+    cacheOutputPath = path.join(process.env.cachePath, TEMPORARY, abilityDir, keyPath);
   } else {
     cacheOutputPath = output;
   }
@@ -380,7 +391,7 @@ function writeFileSync(inputString: string, output: string, jsBundleFile: string
     cacheOutputPath = toUnixPath(cacheOutputPath);
     intermediateJsBundle.push({path: output, size: fileSize, cacheOutputPath: cacheOutputPath});
   } else {
-    logger.error(red, `ETS:ERROR Failed to convert file ${jsBundleFile} to bin. ${output} is lost`, reset);
+    logger.debug(red, `ETS:ERROR Failed to convert file ${jsBundleFile} to bin. ${output} is lost`, reset);
     process.exitCode = FAIL;
   }
 }
@@ -474,6 +485,9 @@ function initAbcEnv() : string[] {
 }
 
 function invokeCluterModuleToAbc(): void {
+  if (projectConfig.isPreview) {
+    process.exitCode = SUCCESS;
+  }
   filterIntermediateModuleByHashJson(buildPathInfo, moduleInfos);
   filterModuleInfos.forEach(moduleInfo => {
     if (moduleInfo.isCommonJs) {
@@ -506,6 +520,9 @@ function invokeCluterModuleToAbc(): void {
     totalWorkerNumber += esmWorkerNumber;
 
     let count_ = 0;
+    if (projectConfig.isPreview) {
+      cluster.removeAllListeners("exit");
+    }
     cluster.on('exit', (worker, code, signal) => {
       if (code === FAIL || process.exitCode === FAIL) {
         process.exitCode = FAIL;
@@ -515,8 +532,14 @@ function invokeCluterModuleToAbc(): void {
       if (count_ === totalWorkerNumber) {
         writeModuleHashJson();
         clearGlobalInfo();
-        if (projectConfig.isPreview) {
+        if (projectConfig.isPreview && compileCount < previewCount) {
+          compileCount++;
           console.info(blue, 'COMPILE RESULT:SUCCESS ', reset);
+          if (compileCount >= previewCount) {
+            return;
+          }
+          invokeWorkersModuleToGenAbc(moduleInfos);
+          processEntryToGenAbc(entryInfos);
         }
       }
       logger.debug(`worker ${worker.process.pid} finished`);
@@ -576,29 +599,10 @@ function splitModulesByNumber(moduleInfos: Array<ModuleInfo>, workerNumber: numb
   return result;
 }
 
-function judgeWorkersToGenAbc(callback): void {
-  const workerNum: number = Object.keys(cluster.workers).length;
-  if (workerNum === 0) {
-    callback();
-    return;
-  } else {
-    delayCount++;
-    setTimeout(judgeWorkersToGenAbc.bind(null, callback), 50);
-  }
-}
-
-function judgeModuleWorkersToGenAbc(callback): void {
-  const workerNum: number = Object.keys(cluster.workers).length;
-  if (workerNum === 0) {
-    callback(moduleInfos);
-    return;
-  } else {
-    delayCount++;
-    setTimeout(judgeModuleWorkersToGenAbc.bind(null, callback), 50);
-  }
-}
-
 function invokeWorkersToGenAbc(): void {
+  if (projectConfig.isPreview) {
+    process.exitCode = SUCCESS;
+  }
   let cmdPrefix: string = '';
   let maxWorkerNumber: number = 3;
 
@@ -640,6 +644,10 @@ function invokeWorkersToGenAbc(): void {
     }
 
     let count_ = 0;
+    if (projectConfig.isPreview) {
+      process.removeAllListeners("exit");
+      cluster.removeAllListeners("exit");
+    }
     cluster.on('exit', (worker, code, signal) => {
       if (code === FAIL || process.exitCode === FAIL) {
         process.exitCode = FAIL;
@@ -647,23 +655,29 @@ function invokeWorkersToGenAbc(): void {
       }
       count_++;
       if (count_ === workerNumber) {
-        writeHashJson();
-        clearGlobalInfo();
-        if (projectConfig.isPreview) {
+        // for preview of with incre compile
+        if (projectConfig.isPreview && compileCount < previewCount) {
+          compileCount++;
+          processExtraAssetForBundle();
           console.info(red, 'COMPILE RESULT:SUCCESS ', reset);
+          if (compileCount >= previewCount) {
+            return;
+          }
+          invokeWorkersToGenAbc();
         }
       }
       logger.debug(`worker ${worker.process.pid} finished`);
     });
 
     process.on('exit', (code) => {
-      intermediateJsBundle.forEach((item) => {
-        const input = item.path;
-        if (fs.existsSync(input)) {
-          fs.unlinkSync(input);
-        }
-      });
+      // for build options
+      processExtraAssetForBundle();
     });
+
+    // for preview of without incre compile
+    if (workerNumber === 0 && projectConfig.isPreview) {
+      processExtraAssetForBundle();
+    }
   }
 }
 
@@ -697,7 +711,7 @@ function filterIntermediateModuleByHashJson(buildPath: string, moduleInfos: Arra
       const input: string = moduleInfos[i].tempFilePath;
       const abcPath: string = moduleInfos[i].abcFilePath;
       if (!fs.existsSync(input)) {
-        logger.error(red, `ETS:ERROR ${input} is lost`, reset);
+        logger.debug(red, `ETS:ERROR ${input} is lost`, reset);
         process.exitCode = FAIL;
         break;
       }
@@ -754,7 +768,7 @@ function writeModuleHashJson(): void {
     return;
   }
   // fix bug of multi trigger
-  if (!projectConfig.isPreview || delayCount < 1) {
+  if (!projectConfig.isPreview || previewCount < 1) {
     fs.writeFileSync(hashFilePath, JSON.stringify(moduleHashJsonObject));
   }
 }
@@ -786,12 +800,10 @@ function filterIntermediateJsBundleByHashJson(buildPath: string, inputPaths: Fil
     jsonObject = JSON.parse(jsonFile);
     fileterIntermediateJsBundle = [];
     for (let i = 0; i < inputPaths.length; ++i) {
-      const input: string = inputPaths[i].path;
-      const abcPath: string = input.replace(/_.js$/, EXTNAME_ABC);
       const cacheOutputPath: string = inputPaths[i].cacheOutputPath;
-      const cacheAbcFilePath: string = cacheOutputPath.replace(/\_.js$/, '.abc');
+      const cacheAbcFilePath: string = cacheOutputPath.replace(/\.temp\.js$/, '.abc');
       if (!fs.existsSync(cacheOutputPath)) {
-        logger.error(red, `ETS:ERROR ${cacheOutputPath} is lost`, reset);
+        logger.debug(red, `ETS:ERROR ${cacheOutputPath} is lost`, reset);
         process.exitCode = FAIL;
         break;
       }
@@ -801,10 +813,6 @@ function filterIntermediateJsBundleByHashJson(buildPath: string, inputPaths: Fil
         if (jsonObject[cacheOutputPath] === hashInputContentData && jsonObject[cacheAbcFilePath] === hashAbcContentData) {
           updateJsonObject[cacheOutputPath] = hashInputContentData;
           updateJsonObject[cacheAbcFilePath] = hashAbcContentData;
-          if (!fs.existsSync(abcPath)) {
-            mkdirsSync(path.dirname(abcPath));
-            fs.copyFileSync(cacheAbcFilePath, abcPath);
-          }
         } else {
           fileterIntermediateJsBundle.push(inputPaths[i]);
         }
@@ -819,10 +827,8 @@ function filterIntermediateJsBundleByHashJson(buildPath: string, inputPaths: Fil
 
 function writeHashJson(): void {
   for (let i = 0; i < fileterIntermediateJsBundle.length; ++i) {
-    const input:string = fileterIntermediateJsBundle[i].path;
-    const abcPath: string = input.replace(/_.js$/, EXTNAME_ABC);
     const cacheOutputPath: string = fileterIntermediateJsBundle[i].cacheOutputPath;
-    const cacheAbcFilePath: string = cacheOutputPath.replace(/\_.js$/, '.abc');
+    const cacheAbcFilePath: string = cacheOutputPath.replace(/\.temp\.js$/, '.abc');
     if (!fs.existsSync(cacheOutputPath) || !fs.existsSync(cacheAbcFilePath)) {
       logger.error(red, `ETS:ERROR ${cacheOutputPath} is lost`, reset);
       process.exitCode = FAIL;
@@ -833,28 +839,12 @@ function writeHashJson(): void {
     hashJsonObject[cacheOutputPath] = hashInputContentData;
     hashJsonObject[cacheAbcFilePath] = hashAbcContentData;
   }
-  for (let i = 0; i < intermediateJsBundle.length; ++i) {
-    const abcFile: string = intermediateJsBundle[i].path.replace(/\_.js$/, ".abc");
-    const cacheAbcFilePath: string = intermediateJsBundle[i].cacheOutputPath.replace(/\_.js$/, ".abc");
-    if (!fs.existsSync(cacheAbcFilePath)) {
-      logger.error(red, `ETS:ERROR ${cacheAbcFilePath} is lost`, reset);
-      process.exitCode = FAIL;
-      break;
-    }
-    if (process.env.cachePath !== undefined) {
-      mkdirsSync(path.dirname(abcFile));
-      fs.copyFileSync(cacheAbcFilePath, abcFile);
-    }
-    if (process.env.cachePath === undefined && fs.existsSync(intermediateJsBundle[i].path)) {
-      fs.unlinkSync(intermediateJsBundle[i].path);
-    }
-  }
   const hashFilePath: string = genHashJsonPath(buildPathInfo);
   if (hashFilePath.length === 0) {
     return;
   }
   // fix bug of multi trigger
-  if (!projectConfig.isPreview || delayCount < 1) {
+  if (!projectConfig.isPreview || previewCount < 1) {
     fs.writeFileSync(hashFilePath, JSON.stringify(hashJsonObject));
   }
 }
@@ -866,7 +856,11 @@ function genHashJsonPath(buildPath: string): string {
       logger.debug(red, `ETS:ERROR hash path does not exist`, reset);
       return '';
     }
-    return path.join(process.env.cachePath, hashFile);
+    let buildDirArr: string[] = projectConfig.buildPath.split(path.sep);
+    let abilityDir: string = buildDirArr[buildDirArr.length - 1];
+    let hashJsonPath: string = path.join(process.env.cachePath, TEMPORARY, abilityDir, hashFile);
+    mkdirsSync(path.dirname(hashJsonPath));
+    return hashJsonPath;
   } else if (buildPath.indexOf(ARK) >= 0) {
     const dataTmps: string[] = buildPath.split(ARK);
     const hashPath: string = path.join(dataTmps[0], ARK);
@@ -898,4 +892,34 @@ function checkNodeModules() {
   }
 
   return true;
+}
+
+function copyFileCachePathToBuildPath() {
+  for (let i = 0; i < intermediateJsBundle.length; ++i) {
+    const abcFile: string = intermediateJsBundle[i].path.replace(/\.temp\.js$/, ".abc");
+    const cacheOutputPath: string = intermediateJsBundle[i].cacheOutputPath;
+    const cacheAbcFilePath: string = intermediateJsBundle[i].cacheOutputPath.replace(/\.temp\.js$/, ".abc");
+    if (!fs.existsSync(cacheAbcFilePath)) {
+      logger.debug(red, `ETS:ERROR ${cacheAbcFilePath} is lost`, reset);
+      process.exitCode = FAIL;
+      break;
+    }
+    let parent: string = path.join(abcFile, '..');
+    if (!(fs.existsSync(parent) && fs.statSync(parent).isDirectory())) {
+      mkDir(parent);
+    }
+    // for preview mode, cache path and old abc file both exist, should copy abc file for updating
+    if (process.env.cachePath !== undefined) {
+      fs.copyFileSync(cacheAbcFilePath, abcFile);
+    }
+    if (process.env.cachePath === undefined && fs.existsSync(cacheOutputPath)) {
+      fs.unlinkSync(cacheOutputPath);
+    }
+  }
+}
+
+function processExtraAssetForBundle() {
+  writeHashJson();
+  copyFileCachePathToBuildPath();
+  clearGlobalInfo();
 }

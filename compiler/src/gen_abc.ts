@@ -31,15 +31,15 @@ const reset: string = '\u001b[39m';
 function js2abcByWorkers(jsonInput: string, cmd: string): Promise<void> {
   const inputPaths: any = JSON.parse(jsonInput);
   for (let i = 0; i < inputPaths.length; ++i) {
-    const input: string = inputPaths[i].path;
+    const input: string = inputPaths[i].path.replace(/\.temp\.js$/, "_.js");
     const cacheOutputPath: string = inputPaths[i].cacheOutputPath;
-    const cacheAbcFilePath: string = cacheOutputPath.replace(/\_.js$/, ".abc");
+    const cacheAbcFilePath: string = cacheOutputPath.replace(/\.temp\.js$/, ".abc");
     const singleCmd: any = `${cmd} "${cacheOutputPath}" -o "${cacheAbcFilePath}" --source-file "${input}"`;
     logger.debug('gen abc cmd is: ', singleCmd, ' ,file size is:', inputPaths[i].size, ' byte');
     try {
       childProcess.execSync(singleCmd);
     } catch (e) {
-      logger.error(red, `ETS:ERROR Failed to convert file ${input} to abc `, reset);
+      logger.debug(red, `ETS:ERROR Failed to convert file ${input} to abc `, reset);
       process.exit(FAIL);
     }
   }
@@ -50,15 +50,15 @@ function js2abcByWorkers(jsonInput: string, cmd: string): Promise<void> {
 function es2abcByWorkers(jsonInput: string, cmd: string): Promise<void> {
   const inputPaths: any = JSON.parse(jsonInput);
   for (let i = 0; i < inputPaths.length; ++i) {
-    const input: string = inputPaths[i].path;
+    const input: string = inputPaths[i].path.replace(/\.temp\.js$/, "_.js");
     const cacheOutputPath: string = inputPaths[i].cacheOutputPath;
-    const cacheAbcFilePath: string = cacheOutputPath.replace(/\_.js$/, ".abc");
+    const cacheAbcFilePath: string = cacheOutputPath.replace(/\.temp\.js$/, ".abc");
     const singleCmd: any = `${cmd} "${cacheOutputPath}" --output "${cacheAbcFilePath}" --source-file "${input}"`;
     logger.debug('gen abc cmd is: ', singleCmd, ' ,file size is:', inputPaths[i].size, ' byte');
     try {
       childProcess.execSync(singleCmd);
     } catch (e) {
-      logger.error(red, `ETS:ERROR Failed to convert file ${input} to abc `, reset);
+      logger.debug(red, `ETS:ERROR Failed to convert file ${input} to abc `, reset);
       process.exit(FAIL);
     }
   }
@@ -75,7 +75,7 @@ if (cluster.isWorker && process.env['inputs'] !== undefined && process.env['cmd'
   } else if (process.env.panda === ES2ABC  || process.env.panda === 'undefined' || process.env.panda === undefined) {
     es2abcByWorkers(process.env['inputs'], process.env['cmd']);
   } else {
-    logger.error(red, `ETS:ERROR please set panda module`, reset);
+    logger.debug(red, `ETS:ERROR please set panda module`, reset);
     process.exit(FAIL);
   }
   process.exit(SUCCESS);
