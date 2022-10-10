@@ -152,7 +152,7 @@ export function processUISyntax(program: ts.Program, ut = false): Function {
           node.parameters.push(createParentParameter());
           node = ts.factory.updateFunctionDeclaration(node, undefined, node.modifiers,
             node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type,
-            processComponentBlock(node.body, false, transformLog.errors, false, true));
+            processComponentBlock(node.body, false, transformLog.errors, false, true, node.name.getText()));
         } else if (hasDecorator(node, COMPONENT_STYLES_DECORATOR)) {
           if (node.parameters.length === 0) {
             node = undefined;
@@ -479,10 +479,15 @@ function processExtend(node: ts.FunctionDeclaration, log: LogInfo[]): ts.Functio
   const componentName: string = isExtendFunction(node);
   if (componentName && node.body && node.body.statements.length) {
     const statementArray: ts.Statement[] = [];
+    let bodynode: ts.Block;
     const attrSet: ts.CallExpression = node.body.statements[0].expression;
-    const changeCompName: ts.ExpressionStatement = ts.factory.createExpressionStatement(processExtendBody(attrSet));
-    bindComponentAttr(changeCompName as ts.ExpressionStatement,
-      ts.factory.createIdentifier(componentName), statementArray, log);
+    if (isOriginalExtend(node.body)) {
+      const changeCompName: ts.ExpressionStatement = ts.factory.createExpressionStatement(processExtendBody(attrSet));
+      bindComponentAttr(changeCompName as ts.ExpressionStatement,
+        ts.factory.createIdentifier(componentName), statementArray, log);
+    } else {
+      bodynode = ts.visitEachChild(node.body, traverseExtendExpression, contextGlobal);
+    }
     let extendFunctionName: string;
     if (node.name.getText().startsWith('__' + componentName + '__')) {
       extendFunctionName = node.name.getText();
@@ -492,18 +497,64 @@ function processExtend(node: ts.FunctionDeclaration, log: LogInfo[]): ts.Functio
     }
     return ts.factory.updateFunctionDeclaration(node, undefined, node.modifiers, node.asteriskToken,
       ts.factory.createIdentifier(extendFunctionName), node.typeParameters,
-      node.parameters, node.type, ts.factory.updateBlock(node.body, statementArray));
+      node.parameters, node.type, isOriginalExtend(node.body) ?
+        ts.factory.updateBlock(node.body, statementArray) : bodynode);
+  }
+  function traverseExtendExpression(node: ts.Node): ts.Node {
+    if (ts.isExpressionStatement(node) && isDollarNode(node)) {
+      const changeCompName: ts.ExpressionStatement =
+        ts.factory.createExpressionStatement(processExtendBody(node.expression, componentName));
+      const statementArray: ts.Statement[] = [];
+      bindComponentAttr(changeCompName, ts.factory.createIdentifier(componentName), statementArray, []);
+      return ts.factory.createCallExpression(
+        ts.factory.createParenthesizedExpression(ts.factory.createFunctionExpression(
+          undefined, undefined, undefined, undefined, [], undefined,
+          ts.factory.createBlock(statementArray, true))), undefined, []);
+    }
+    return ts.visitEachChild(node, traverseExtendExpression, contextGlobal);
   }
 }
 
-function processExtendBody(node: ts.Node): ts.Expression {
+export function isOriginalExtend(node: ts.Block): boolean {
+  let innerNode: ts.Node = node.statements[0];
+  if (node.statements.length === 1 && ts.isExpressionStatement(innerNode)) {
+    while (innerNode.expression) {
+      innerNode = innerNode.expression;
+    }
+    if (ts.isIdentifier(innerNode) && innerNode.pos && innerNode.end && innerNode.pos === innerNode.end &&
+      innerNode.escapedText.toString().match(/Instance$/)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isDollarNode(node: ts.ExpressionStatement): boolean {
+  let innerNode: ts.Node = node;
+  while (innerNode.expression) {
+    innerNode = innerNode.expression;
+  }
+  if (ts.isIdentifier(innerNode) && innerNode.getText() === '$') {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+function processExtendBody(node: ts.Node, componentName?: string): ts.Expression {
   switch (node.kind) {
     case ts.SyntaxKind.CallExpression:
-      return ts.factory.createCallExpression(processExtendBody(node.expression), undefined, node.arguments);
+      return ts.factory.createCallExpression(processExtendBody(node.expression, componentName),
+        undefined, node.arguments);
     case ts.SyntaxKind.PropertyAccessExpression:
-      return ts.factory.createPropertyAccessExpression(processExtendBody(node.expression), node.name);
+      return ts.factory.createPropertyAccessExpression(
+        processExtendBody(node.expression, componentName), node.name);
     case ts.SyntaxKind.Identifier:
-      return ts.factory.createIdentifier(node.escapedText.toString().replace(INSTANCE, ''));
+      if (!componentName) {
+        return ts.factory.createIdentifier(node.escapedText.toString().replace(INSTANCE, ''));
+      } else {
+        return ts.factory.createIdentifier(componentName);
+      }
   }
 }
 
